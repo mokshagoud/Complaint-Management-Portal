@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ResolveX - Smart Complaint Management Portal</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <!-- Chart.js for Analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#f0f7ff',
+              100: '#e0effe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              900: '#1e3a8a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    
+    .glass-nav {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    .glass-card {
+      background: rgba(30, 41, 59, 0.6);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .modal-backdrop {
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(6px);
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col antialiased selection:bg-brand-500 selection:text-white">
+
+  <!-- HEADER & NAVIGATION -->
+  <header class="sticky top-0 z-40 glass-nav border-b border-slate-800/80">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      
+      <!-- Brand Logo -->
+      <div class="flex items-center space-x-3">
+        <div class="p-2.5 bg-gradient-to-tr from-brand-600 to-indigo-600 rounded-xl shadow-lg shadow-brand-500/20 text-white">
+          <i class="fa-solid fa-shield-halved text-xl"></i>
+        </div>
+        <div>
+          <span class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+            Resolve<span class="text-brand-500">X</span>
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-400 border border-brand-500/20 font-mono">v2.4</span>
+          </span>
+          <p class="text-[10px] text-slate-400 hidden sm:block">Citizen Voice & Grievance Redressal Portal</p>
+        </div>
+      </div>
+
+      <!-- Quick Search Bar -->
+      <div class="hidden md:flex flex-1 max-w-md mx-4">
+        <div class="relative w-full">
+          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-xs text-slate-400"></i>
+          <input type="text" id="globalSearchInput" onkeyup="handleGlobalSearch()" placeholder="Search tickets by ID, title, category or location..."
+            class="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition" />
+        </div>
+      </div>
+
+      <!-- Right Nav Controls: Notifications, Role Switcher -->
+      <div class="flex items-center gap-3">
+        <!-- Notification Dropdown Toggle -->
+        <div class="relative">
+          <button onclick="toggleNotifications()" class="relative p-2.5 text-slate-400 hover:text-slate-200 bg-slate-900 border border-slate-800 rounded-xl transition hover:bg-slate-800">
+            <i class="fa-regular fa-bell text-sm"></i>
+            <span id="notifBadge" class="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white font-mono text-[9px] font-bold rounded-full flex items-center justify-center">3</span>
+          </button>
+
+          <!-- Notification Popup -->
+          <div id="notifDropdown" class="hidden absolute right-0 mt-2 w-80 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl z-50 p-3">
+            <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
+              <span class="text-xs font-semibold text-slate-300">Notifications</span>
+              <button onclick="clearNotifications()" class="text-[10px] text-brand-400 hover:underline">Mark all read</button>
+            </div>
+            <div class="space-y-2 text-xs max-h-64 overflow-y-auto" id="notifContainer">
+              <!-- Populated via JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Role Switcher Dropdown -->
+        <div class="flex items-center bg-slate-900/90 border border-slate-800 rounded-xl p-1">
+          <label class="text-[10px] text-slate-400 px-2 font-mono font-medium hidden sm:inline"><i class="fa-solid fa-user-gear mr-1"></i>Role:</label>
+          <select id="roleSwitcher" onchange="switchRole(this.value)" class="bg-slate-800 text-slate-200 text-xs font-semibold rounded-lg px-2.5 py-1.5 focus:outline-none cursor-pointer border border-slate-700/60">
+            <option value="citizen">🧑‍💼 Citizen</option>
+            <option value="support">🛡️ Support Admin</option>
+            <option value="manager">📊 Dept Manager</option>
+          </select>
+        </div>
+
+        <!-- Submit Complaint CTA -->
+        <button onclick="openModal('submitModal')" class="bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white text-xs font-semibold px-3.5 py-2 rounded-xl shadow-md shadow-brand-500/20 transition active:scale-95 flex items-center gap-2">
+          <i class="fa-solid fa-circle-plus"></i>
+          <span class="hidden sm:inline">File Complaint</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- HERO / BANNER NOTIFICATION -->
+    <div id="roleBanner" class="glass-card rounded-2xl p-4 sm:p-5 border-brand-500/20 bg-gradient-to-r from-brand-900/20 via-slate-900 to-indigo-900/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div class="space-y-1">
+        <h1 class="text-lg sm:text-xl font-extrabold text-white flex items-center gap-2">
+          <span id="roleBannerTitle">Citizen Service Portal</span>
+          <span id="roleBadge" class="text-xs font-normal px-2.5 py-0.5 rounded-full bg-brand-500/20 text-brand-300 border border-brand-500/30 font-mono">Public Access</span>
+        </h1>
+        <p id="roleBannerDesc" class="text-xs text-slate-400 leading-relaxed">
+          Report issues, track live status updates with SLA resolution counters, and communicate directly with response teams.
+        </p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="filterTickets('ALL')" class="text-xs px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-slate-300 transition">
+          <i class="fa-solid fa-arrows-rotate mr-1"></i> Refresh Grid
+        </button>
+      </div>
+    </div>
+
+    <!-- DASHBOARD STATS SUMMARY CARDS -->
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+      <!-- Total -->
+      <div onclick="filterTickets('ALL')" class="glass-card rounded-2xl p-4 border-slate-800 hover:border-slate-700 cursor-pointer transition shadow-lg group">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Filed</span>
+          <div class="p-2 bg-brand-500/10 text-brand-400 rounded-xl group-hover:scale-110 transition">
+            <i class="fa-solid fa-folder-open text-xs"></i>
+          </div>
+        </div>
+        <div class="mt-2 flex items-baseline justify-between">
+          <span id="statTotal" class="text-2xl font-black text-white font-mono">0</span>
+          <span class="text-[10px] text-brand-400 font-mono"><i class="fa-solid fa-chart-line"></i> +12%</span>
+        </div>
+      </div>
+
+      <!-- In Progress -->
+      <div onclick="filterTickets('In Progress')" class="glass-card rounded-2xl p-4 border-slate-800 hover:border-blue-500/30 cursor-pointer transition shadow-lg group">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">In Progress</span>
+          <div class="p-2 bg-blue-500/10 text-blue-400 rounded-xl group-hover:scale-110 transition">
+            <i class="fa-solid fa-spinner text-xs animate-spin"></i>
+          </div>
+        </div>
+        <div class="mt-2 flex items-baseline justify-between">
+          <span id="statInProgress" class="text-2xl font-black text-blue-400 font-mono">0</span>
+          <span class="text-[10px] text-blue-400/80 font-mono">Active Queue</span>
+        </div>
+      </div>
+
+      <!-- Resolved -->
+      <div onclick="filterTickets('Resolved')" class="glass-card rounded-2xl p-4 border-slate-800 hover:border-emerald-500/30 cursor-pointer transition shadow-lg group">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Resolved</span>
+          <div class="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl group-hover:scale-110 transition">
+            <i class="fa-solid fa-circle-check text-xs"></i>
+          </div>
+        </div>
+        <div class="mt-2 flex items-baseline justify-between">
+          <span id="statResolved" class="text-2xl font-black text-emerald-400 font-mono">0</span>
+          <span id="statResolvedRate" class="text-[10px] text-emerald-400 font-mono">0% Rate</span>
+        </div>
+      </div>
+
+      <!-- Pending / Urgent -->
+      <div onclick="filterTickets('Pending')" class="glass-card rounded-2xl p-4 border-slate-800 hover:border-amber-500/30 cursor-pointer transition shadow-lg group">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Pending Action</span>
+          <div class="p-2 bg-amber-500/10 text-amber-400 rounded-xl group-hover:scale-110 transition">
+            <i class="fa-solid fa-clock text-xs"></i>
+          </div>
+        </div>
+        <div class="mt-2 flex items-baseline justify-between">
+          <span id="statPending" class="text-2xl font-black text-amber-400 font-mono">0</span>
+          <span class="text-[10px] text-amber-400/80 font-mono">Needs Review</span>
+        </div>
+      </div>
+
+      <!-- Avg Resolution Time -->
+      <div class="glass-card rounded-2xl p-4 border-slate-800 shadow-lg col-span-2 lg:col-span-1">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Avg Resolution</span>
+          <div class="p-2 bg-indigo-500/10 text-indigo-400 rounded-xl">
+            <i class="fa-solid fa-stopwatch text-xs"></i>
+          </div>
+        </div>
+        <div class="mt-2 flex items-baseline justify-between">
+          <span class="text-2xl font-black text-indigo-300 font-mono">18.4 hrs</span>
+          <span class="text-[10px] text-emerald-400 font-mono"><i class="fa-solid fa-arrow-down"></i> 14% faster</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB NAVIGATION & ADMIN CONTROL TOOLBAR -->
+    <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-slate-900/80 p-2 rounded-2xl border border-slate-800">
+      
+      <!-- View Navigation Tabs -->
+      <div class="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
+        <button id="tabBtnTickets" onclick="switchView('tickets')" class="px-4 py-2 rounded-xl text-xs font-semibold transition bg-brand-600 text-white shadow-md flex items-center gap-2">
+          <i class="fa-solid fa-list-check"></i> Complaints Registry
+        </button>
+        <button id="tabBtnAnalytics" onclick="switchView('analytics')" class="px-4 py-2 rounded-xl text-xs font-semibold transition text-slate-400 hover:text-white hover:bg-slate-800 flex items-center gap-2">
+          <i class="fa-solid fa-chart-pie"></i> Analytics & Metrics
+        </button>
+      </div>
+
+      <!-- Filters & Sorting Bar -->
+      <div id="ticketsFilterControls" class="flex flex-wrap items-center gap-2">
+        <!-- Category Filter -->
+        <select id="filterCategory" onchange="applyFilters()" class="bg-slate-950 text-slate-300 text-xs rounded-xl px-3 py-2 border border-slate-800 focus:outline-none focus:border-brand-500">
+          <option value="ALL">All Categories</option>
+          <option value="Public Infrastructure">Public Infrastructure</option>
+          <option value="Sanitation & Waste">Sanitation & Waste</option>
+          <option value="Billing & Payments">Billing & Payments</option>
+          <option value="Tech Support">Tech Support</option>
+          <option value="Civic Issues">Civic Issues</option>
+        </select>
+
+        <!-- Priority Filter -->
+        <select id="filterPriority" onchange="applyFilters()" class="bg-slate-950 text-slate-300 text-xs rounded-xl px-3 py-2 border border-slate-800 focus:outline-none focus:border-brand-500">
+          <option value="ALL">All Priorities</option>
+          <option value="Urgent">Urgent</option>
+          <option value="High">High</option>
+          <option value="Medium">Medium</option>
+          <option value="Low">Low</option>
+        </select>
+
+        <!-- Status Filter -->
+        <select id="filterStatus" onchange="applyFilters()" class="bg-slate-950 text-slate-300 text-xs rounded-xl px-3 py-2 border border-slate-800 focus:outline-none focus:border-brand-500">
+          <option value="ALL">All Statuses</option>
+          <option value="Submitted">Submitted</option>
+          <option value="Under Review">Under Review</option>
+          <option value="Assigned">Assigned</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Resolved">Resolved</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- MAIN VIEW 1: COMPLAINTS REGISTRY & TRACKING -->
+    <div id="viewTickets" class="space-y-4">
+      <div class="glass-card rounded-2xl border-slate-800 overflow-hidden shadow-2xl">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="bg-slate-900/90 text-slate-400 font-semibold border-b border-slate-800">
+                <th class="p-3.5">Ticket ID / Title</th>
+                <th class="p-3.5">Category</th>
+                <th class="p-3.5">Priority</th>
+                <th class="p-3.5">Status</th>
+                <th class="p-3.5">Assigned To</th>
+                <th class="p-3.5">Date / SLA</th>
+                <th class="p-3.5 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="ticketsTableBody" class="divide-y divide-slate-800/60">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+        <div id="emptyState" class="hidden p-8 text-center text-slate-500">
+          <i class="fa-solid fa-inbox text-3xl mb-2 text-slate-600"></i>
+          <p class="text-xs">No complaints found matching your criteria.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN VIEW 2: ANALYTICS & INSIGHTS DASHBOARD -->
+    <div id="viewAnalytics" class="hidden space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        
+        <!-- Category Distribution Chart -->
+        <div class="glass-card p-5 rounded-2xl border-slate-800 shadow-xl">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-chart-pie text-brand-400"></i> Complaints by Category
+          </h3>
+          <div class="h-56 relative flex items-center justify-center">
+            <canvas id="chartCategory"></canvas>
+          </div>
+        </div>
+
+        <!-- Monthly Trends Chart -->
+        <div class="glass-card p-5 rounded-2xl border-slate-800 shadow-xl">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-chart-line text-emerald-400"></i> Monthly Filing Trends
+          </h3>
+          <div class="h-56 relative">
+            <canvas id="chartTrends"></canvas>
+          </div>
+        </div>
+
+        <!-- Status Breakdown Chart -->
+        <div class="glass-card p-5 rounded-2xl border-slate-800 shadow-xl col-span-1 md:col-span-2 lg:col-span-1">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-chart-bar text-amber-400"></i> Resolution Status Rate
+          </h3>
+          <div class="h-56 relative">
+            <canvas id="chartStatus"></canvas>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <!-- MODAL 1: FILE NEW COMPLAINT -->
+  <div id="submitModal" class="fixed inset-0 modal-backdrop z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl relative overflow-hidden max-h-[90vh] overflow-y-auto">
+      
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
+        <div>
+          <h3 class="text-base font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-file-circle-plus text-brand-500"></i> File a New Grievance
+          </h3>
+          <p class="text-xs text-slate-400">Fill in details below to register a ticket on ResolveX.</p>
+        </div>
+        <button onclick="closeModal('submitModal')" class="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800 transition">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <form id="complaintForm" onsubmit="handleFormSubmit(event)" class="space-y-4">
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- Category -->
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Category *</label>
+            <select id="formCategory" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-brand-500 focus:outline-none">
+              <option value="">Select Category</option>
+              <option value="Public Infrastructure">Public Infrastructure</option>
+              <option value="Sanitation & Waste">Sanitation & Waste</option>
+              <option value="Billing & Payments">Billing & Payments</option>
+              <option value="Tech Support">Tech Support</option>
+              <option value="Civic Issues">Civic Issues</option>
+            </select>
+          </div>
+
+          <!-- Priority -->
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Urgency / Priority *</label>
+            <select id="formPriority" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-brand-500 focus:outline-none">
+              <option value="Low">Low Priority (General Query)</option>
+              <option value="Medium" selected>Medium Priority (Standard)</option>
+              <option value="High">High Priority (Urgent Attn.)</option>
+              <option value="Urgent">Urgent (Emergency Service)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Title -->
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Complaint Title *</label>
+          <input type="text" id="formTitle" required placeholder="Brief description of the issue..."
+            class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-brand-500 focus:outline-none" />
+        </div>
+
+        <!-- Location -->
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Location / Address</label>
+          <input type="text" id="formLocation" placeholder="e.g. Sector 4, Main Highway, Ward 12"
+            class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-brand-500 focus:outline-none" />
+        </div>
+
+        <!-- Description -->
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Detailed Description *</label>
+          <textarea id="formDescription" required rows="3" placeholder="Provide full context, observations, timestamps..."
+            class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-brand-500 focus:outline-none"></textarea>
+        </div>
+
+        <!-- Attachment Simulation -->
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Attachment (Photos / PDF)</label>
+          <div class="border-2 border-dashed border-slate-800 hover:border-slate-700 rounded-xl p-4 text-center cursor-pointer transition bg-slate-950/50">
+            <i class="fa-solid fa-cloud-arrow-up text-xl text-slate-500 mb-1 block"></i>
+            <span class="text-xs text-slate-400">Click to upload photo or drag file here</span>
+            <input type="file" id="formFile" class="hidden" onchange="simulateFileSelect(this)" />
+            <p id="fileNamePreview" class="text-[11px] text-brand-400 font-mono mt-1 hidden"></p>
+          </div>
+        </div>
+
+        <!-- Submit CTAs -->
+        <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
+          <button type="button" onclick="closeModal('submitModal')" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition">Cancel</button>
+          <button type="submit" class="px-5 py-2 bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-brand-500/20 transition">
+            Submit Grievance
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 2: TICKET DETAIL & TIMELINE DRAWER -->
+  <div id="detailModal" class="fixed inset-0 modal-backdrop z-50 hidden flex items-center justify-end">
+    <div class="bg-slate-900 border-l border-slate-800 max-w-xl w-full h-full p-6 shadow-2xl flex flex-col justify-between overflow-y-auto">
+      
+      <div>
+        <!-- Drawer Header -->
+        <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+          <div class="flex items-center gap-2">
+            <span id="detailBadgeId" class="text-xs font-mono font-bold bg-brand-500/10 text-brand-400 px-2.5 py-1 rounded-lg border border-brand-500/20">#CMP-0000</span>
+            <span id="detailBadgePriority" class="text-xs font-mono px-2 py-0.5 rounded-full">Priority</span>
+          </div>
+          <button onclick="closeModal('detailModal')" class="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800 transition">
+            <i class="fa-solid fa-xmark text-lg"></i>
+          </button>
+        </div>
+
+        <!-- Ticket Summary Info -->
+        <div class="mt-4 space-y-3">
+          <h2 id="detailTitle" class="text-lg font-bold text-white">Title Placeholder</h2>
+          <p id="detailDescription" class="text-xs text-slate-300 bg-slate-950/80 p-3 rounded-xl border border-slate-800/80 leading-relaxed">
+            Description details...
+          </p>
+
+          <div class="grid grid-cols-2 gap-2 text-xs text-slate-400 pt-1">
+            <div><strong class="text-slate-300">Category:</strong> <span id="detailCategory">-</span></div>
+            <div><strong class="text-slate-300">Location:</strong> <span id="detailLocation">-</span></div>
+            <div><strong class="text-slate-300">Assigned Team:</strong> <span id="detailAssigned">-</span></div>
+            <div><strong class="text-slate-300">Target SLA:</strong> <span id="detailSLA" class="font-mono text-amber-400">-</span></div>
+          </div>
+        </div>
+
+        <!-- ADMIN CONTROLS (Only visible in Admin/Manager mode) -->
+        <div id="adminControlPanel" class="mt-5 p-3.5 bg-slate-950 rounded-xl border border-brand-500/20 space-y-2">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-brand-400 block"><i class="fa-solid fa-user-gear mr-1"></i> Staff Action Panel</span>
+          
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-[10px] text-slate-400">Update Status</label>
+              <select id="updateStatusSelect" class="w-full bg-slate-900 border border-slate-800 text-xs rounded-lg px-2 py-1.5 text-slate-200">
+                <option value="Submitted">Submitted</option>
+                <option value="Under Review">Under Review</option>
+                <option value="Assigned">Assigned</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Resolved">Resolved</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-[10px] text-slate-400">Assign Officer</label>
+              <select id="updateAgentSelect" class="w-full bg-slate-900 border border-slate-800 text-xs rounded-lg px-2 py-1.5 text-slate-200">
+                <option value="Unassigned">Unassigned</option>
+                <option value="Officer Dave">Officer Dave</option>
+                <option value="Eng. Sarah">Eng. Sarah</option>
+                <option value="Tech Team Lead">Tech Team Lead</option>
+              </select>
+            </div>
+          </div>
+          <button onclick="saveAdminUpdate()" class="w-full mt-1 bg-brand-600 hover:bg-brand-500 text-white font-semibold py-1.5 rounded-lg text-xs transition">
+            Apply Update & Notify Citizen
+          </button>
+        </div>
+
+        <!-- PROGRESS TIMELINE TRACKER -->
+        <div class="mt-6">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
+            <i class="fa-solid fa-timeline text-brand-400"></i> Resolution Lifecycle Timeline
+          </h3>
+
+          <div class="relative pl-6 space-y-4 border-l-2 border-slate-800" id="timelineContainer">
+            <!-- Dynamically populated timeline nodes -->
+          </div>
+        </div>
+
+        <!-- COMMENTS & WORK LOG -->
+        <div class="mt-6 space-y-3">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+            <i class="fa-solid fa-comments text-indigo-400"></i> Activity & Public Updates Log
+          </h3>
+
+          <div id="commentsList" class="space-y-2 text-xs max-h-40 overflow-y-auto pr-1">
+            <!-- Comments inserted here -->
+          </div>
+
+          <div class="flex gap-2 pt-2">
+            <input type="text" id="newCommentInput" placeholder="Add a public comment or update note..."
+              class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-brand-500" />
+            <button onclick="addComment()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-xl text-xs font-semibold transition">
+              Post
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer Citizen Rating Section (Shows when ticket is Resolved) -->
+      <div id="feedbackSection" class="mt-6 p-3 bg-emerald-950/30 rounded-xl border border-emerald-500/20 text-xs hidden">
+        <span class="font-bold text-emerald-400 block mb-1">Feedback & Rating</span>
+        <p class="text-slate-400 mb-2">Are you satisfied with the resolution of this issue?</p>
+        <div class="flex items-center gap-1 text-amber-400 text-sm" id="starRating">
+          <i class="fa-solid fa-star cursor-pointer" onclick="rateTicket(1)"></i>
+          <i class="fa-solid fa-star cursor-pointer" onclick="rateTicket(2)"></i>
+          <i class="fa-solid fa-star cursor-pointer" onclick="rateTicket(3)"></i>
+          <i class="fa-solid fa-star cursor-pointer" onclick="rateTicket(4)"></i>
+          <i class="fa-solid fa-star cursor-pointer" onclick="rateTicket(5)"></i>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION STACK -->
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 space-y-2 pointer-events-none"></div>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    // INITIAL MOCK DATA
+    let currentRole = 'citizen'; // 'citizen', 'support', 'manager'
+    let currentActiveTicketId = null;
+
+    let tickets = [
+      {
+        id: 'CMP-2026-8941',
+        title: 'Broken Streetlight on 5th Avenue & Main St.',
+        category: 'Public Infrastructure',
+        priority: 'High',
+        status: 'In Progress',
+        assignedTo: 'Eng. Sarah',
+        location: '5th Avenue, Ward 8',
+        description: 'The street light has been flickering and completely turned off for the past 3 days causing safety concerns at night.',
+        createdAt: '2026-10-06 14:20',
+        slaHours: 24,
+        timeline: [
+          { status: 'Submitted', time: 'Oct 6, 14:20', desc: 'Ticket registered by Citizen.' },
+          { status: 'Under Review', time: 'Oct 6, 15:00', desc: 'Reviewed by Municipal Desk.' },
+          { status: 'Assigned', time: 'Oct 6, 16:30', desc: 'Assigned to Electrical Maintenance Team.' },
+          { status: 'In Progress', time: 'Oct 7, 09:15', desc: 'Technician dispatched to location.' }
+        ],
+        comments: [
+          { author: 'Support Admin', time: 'Oct 6 15:00', text: 'Dispatched notification to electrical crew.' },
+          { author: 'Eng. Sarah', time: 'Oct 7 09:15', text: 'Inspecting the underground wiring junction.' }
+        ],
+        rating: 0
+      },
+      {
+        id: 'CMP-2026-7732',
+        title: 'Garbage Collection Missed for 2 Days',
+        category: 'Sanitation & Waste',
+        priority: 'Urgent',
+        status: 'Submitted',
+        assignedTo: 'Unassigned',
+        location: 'Block B, Green Valley Apartments',
+        description: 'Scheduled waste collection did not arrive on Tuesday or Wednesday. Bins are overflowing.',
+        createdAt: '2026-10-08 08:30',
+        slaHours: 12,
+        timeline: [
+          { status: 'Submitted', time: 'Oct 8, 08:30', desc: 'Ticket registered by Citizen.' }
+        ],
+        comments: [],
+        rating: 0
+      },
+      {
+        id: 'CMP-2026-6109',
+        title: 'Water Supply Billing Discrepancy',
+        category: 'Billing & Payments',
+        priority: 'Medium',
+        status: 'Resolved',
+        assignedTo: 'Officer Dave',
+        location: 'Meter No. #99321',
+        description: 'Received double charge on September water utility bill despite normal usage rate.',
+        createdAt: '2026-10-02 10:15',
+        slaHours: 48,
+        timeline: [
+          { status: 'Submitted', time: 'Oct 2, 10:15', desc: 'Ticket registered.' },
+          { status: 'In Progress', time: 'Oct 3, 11:00', desc: 'Audit team re-checking meter log.' },
+          { status: 'Resolved', time: 'Oct 4, 16:00', desc: 'Credit adjustment applied to account.' }
+        ],
+        comments: [
+          { author: 'Officer Dave', time: 'Oct 4 16:00', text: 'Verified reading error. $45 credit applied.' }
+        ],
+        rating: 5
+      }
+    ];
+
+    let notifications = [
+      { id: 1, text: 'Ticket #CMP-2026-8941 status updated to In Progress', time: '10m ago' },
+      { id: 2, text: 'New Urgent ticket filed in Sanitation', time: '1h ago' },
+      { id: 3, text: 'SLA target met for #CMP-2026-6109', time: '1d ago' }
+    ];
+
+    // INITIALIZATION ON PAGE LOAD
+    window.onload = function() {
+      renderTicketsTable(tickets);
+      updateDashboardStats();
+      renderNotifications();
+      initCharts();
+    };
+
+    // SWITCH USER ROLE (Citizen vs Support vs Manager)
+    function switchRole(role) {
+      currentRole = role;
+      const bannerTitle = document.getElementById('roleBannerTitle');
+      const bannerDesc = document.getElementById('roleBannerDesc');
+      const badge = document.getElementById('roleBadge');
+      const adminPanel = document.getElementById('adminControlPanel');
+
+      if (role === 'citizen') {
+        bannerTitle.innerText = 'Citizen Service Portal';
+        bannerDesc.innerText = 'Report issues, track live status updates with SLA resolution counters, and communicate directly with response teams.';
+        badge.innerText = 'Public Access';
+        badge.className = 'text-xs font-normal px-2.5 py-0.5 rounded-full bg-brand-500/20 text-brand-300 border border-brand-500/30 font-mono';
+        if (adminPanel) adminPanel.classList.add('hidden');
+      } else if (role === 'support') {
+        bannerTitle.innerText = 'Support Staff Operations Desk';
+        bannerDesc.innerText = 'Manage incoming grievances, update lifecycle stages, reassign departments, and breach controls.';
+        badge.innerText = 'Staff Mode';
+        badge.className = 'text-xs font-normal px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono';
+        if (adminPanel) adminPanel.classList.remove('hidden');
+      } else if (role === 'manager') {
+        bannerTitle.innerText = 'Department Manager Analytics View';
+        bannerDesc.innerText = 'High-level operational overview, resolution efficiency metrics, and workload capacity charts.';
+        badge.innerText = 'Executive View';
+        badge.className = 'text-xs font-normal px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 font-mono';
+        if (adminPanel) adminPanel.classList.remove('hidden');
+      }
+
+      showToast(`Switched view to ${role.toUpperCase()} role`);
+      renderTicketsTable(tickets);
+    }
+
+    // RENDER COMPLAINTS TABLE
+    function renderTicketsTable(data) {
+      const tbody = document.getElementById('ticketsTableBody');
+      const emptyState = document.getElementById('emptyState');
+      tbody.innerHTML = '';
+
+      if (data.length === 0) {
+        emptyState.classList.remove('hidden');
+        return;
+      } else {
+        emptyState.classList.add('hidden');
+      }
+
+      data.forEach(t => {
+        const priorityColors = {
+          Urgent: 'bg-rose-500/10 text-rose-400 border-rose-500/30',
+          High: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
+          Medium: 'bg-blue-500/10 text-blue-400 border-blue-500/30',
+          Low: 'bg-slate-500/10 text-slate-400 border-slate-500/30'
+        };
+
+        const statusColors = {
+          Submitted: 'bg-slate-700/60 text-slate-300',
+          'Under Review': 'bg-purple-500/20 text-purple-300 border-purple-500/30',
+          Assigned: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
+          'In Progress': 'bg-blue-500/20 text-blue-300 border-blue-500/30',
+          Resolved: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+        };
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-900/60 transition cursor-pointer';
+        tr.onclick = () => openTicketDetail(t.id);
+
+        tr.innerHTML = `
+          <td class="p-3.5">
+            <span class="font-mono text-[11px] text-brand-400 font-bold block">${t.id}</span>
+            <span class="font-medium text-slate-200 line-clamp-1">${escapeHtml(t.title)}</span>
+          </td>
+          <td class="p-3.5 text-slate-300">${t.category}</td>
+          <td class="p-3.5">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-mono border ${priorityColors[t.priority] || ''}">${t.priority}</span>
+          </td>
+          <td class="p-3.5">
+            <span class="px-2.5 py-1 rounded-full text-[10px] font-semibold border ${statusColors[t.status] || ''}">${t.status}</span>
+          </td>
+          <td class="p-3.5 text-slate-300 flex items-center gap-1.5 mt-1">
+            <i class="fa-solid fa-user-circle text-slate-500"></i> ${t.assignedTo}
+          </td>
+          <td class="p-3.5 font-mono text-[11px] text-slate-400">
+            <div>${t.createdAt.split(' ')[0]}</div>
+            <div class="text-[10px] text-amber-400">SLA: ${t.slaHours}h Target</div>
+          </td>
+          <td class="p-3.5 text-right">
+            <button class="p-1.5 text-slate-400 hover:text-brand-400 bg-slate-800 rounded-lg hover:bg-slate-700 transition">
+              <i class="fa-solid fa-chevron-right text-xs"></i>
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // UPDATE STATS COUNTERS
+    function updateDashboardStats() {
+      const total = tickets.length;
+      const inProgress = tickets.filter(t => t.status === 'In Progress' || t.status === 'Assigned').length;
+      const resolved = tickets.filter(t => t.status === 'Resolved').length;
+      const pending = tickets.filter(t => t.status === 'Submitted' || t.status === 'Under Review').length;
+
+      document.getElementById('statTotal').innerText = total;
+      document.getElementById('statInProgress').innerText = inProgress;
+      document.getElementById('statResolved').innerText = resolved;
+      document.getElementById('statPending').innerText = pending;
+
+      const rate = total > 0 ? Math.round((resolved / total) * 100) : 0;
+      document.getElementById('statResolvedRate').innerText = `${rate}% Rate`;
+    }
+
+    // OPEN TICKET DETAIL & TIMELINE DRAWER
+    function openTicketDetail(id) {
+      currentActiveTicketId = id;
+      const t = tickets.find(x => x.id === id);
+      if (!t) return;
+
+      document.getElementById('detailBadgeId').innerText = t.id;
+      document.getElementById('detailTitle').innerText = t.title;
+      document.getElementById('detailDescription').innerText = t.description;
+      document.getElementById('detailCategory').innerText = t.category;
+      document.getElementById('detailLocation').innerText = t.location || 'N/A';
+      document.getElementById('detailAssigned').innerText = t.assignedTo;
+      document.getElementById('detailSLA').innerText = `${t.slaHours} Hours`;
+
+      const priorityBadge = document.getElementById('detailBadgePriority');
+      priorityBadge.innerText = `${t.priority} Priority`;
+      priorityBadge.className = `text-xs font-mono px-2 py-0.5 rounded-full ${
+        t.priority === 'Urgent' ? 'bg-rose-500/20 text-rose-300' : 'bg-slate-800 text-slate-300'
+      }`;
+
+      // Admin select pre-fill
+      document.getElementById('updateStatusSelect').value = t.status;
+      document.getElementById('updateAgentSelect').value = t.assignedTo;
+
+      // Render Timeline
+      renderTimeline(t.timeline);
+
+      // Render Comments
+      renderComments(t.comments);
+
+      // Feedback section visibility
+      const fbSection = document.getElementById('feedbackSection');
+      if (t.status === 'Resolved') {
+        fbSection.classList.remove('hidden');
+      } else {
+        fbSection.classList.add('hidden');
+      }
+
+      // Show Admin Panel depending on role
+      const adminPanel = document.getElementById('adminControlPanel');
+      if (currentRole === 'support' || currentRole === 'manager') {
+        adminPanel.classList.remove('hidden');
+      } else {
+        adminPanel.classList.add('hidden');
+      }
+
+      openModal('detailModal');
+    }
+
+    function renderTimeline(list) {
+      const container = document.getElementById('timelineContainer');
+      container.innerHTML = '';
+
+      list.forEach((node, idx) => {
+        const item = document.createElement('div');
+        item.className = 'relative';
+        item.innerHTML = `
+          <div class="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-brand-500 border-4 border-slate-900 flex items-center justify-center"></div>
+          <div>
+            <span class="text-xs font-bold text-slate-200">${node.status}</span>
+            <span class="text-[10px] text-slate-500 font-mono ml-2">${node.time}</span>
+            <p class="text-xs text-slate-400 mt-0.5">${node.desc}</p>
+          </div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    function renderComments(comments) {
+      const list = document.getElementById('commentsList');
+      list.innerHTML = '';
+      if (comments.length === 0) {
+        list.innerHTML = `<p class="text-slate-500 italic text-[11px]">No activity comments posted yet.</p>`;
+        return;
+      }
+
+      comments.forEach(c => {
+        const div = document.createElement('div');
+        div.className = 'p-2.5 bg-slate-950/60 rounded-xl border border-slate-800/60';
+        div.innerHTML = `
+          <div class="flex justify-between items-center mb-1">
+            <span class="font-bold text-brand-400 text-[11px]">${escapeHtml(c.author)}</span>
+            <span class="text-[10px] text-slate-500 font-mono">${c.time}</span>
+          </div>
+          <p class="text-slate-300 text-xs">${escapeHtml(c.text)}</p>
+        `;
+        list.appendChild(div);
+      });
+    }
+
+    function addComment() {
+      const input = document.getElementById('newCommentInput');
+      const text = input.value.trim();
+      if (!text || !currentActiveTicketId) return;
+
+      const t = tickets.find(x => x.id === currentActiveTicketId);
+      if (t) {
+        const authorName = currentRole === 'citizen' ? 'Citizen' : 'Support Team';
+        t.comments.push({ author: authorName, time: 'Just now', text: text });
+        renderComments(t.comments);
+        input.value = '';
+        showToast('Comment posted successfully');
+      }
+    }
+
+    function saveAdminUpdate() {
+      if (!currentActiveTicketId) return;
+      const t = tickets.find(x => x.id === currentActiveTicketId);
+      if (t) {
+        const newStatus = document.getElementById('updateStatusSelect').value;
+        const newAgent = document.getElementById('updateAgentSelect').value;
+
+        t.status = newStatus;
+        t.assignedTo = newAgent;
+
+        // Append to timeline if status changed
+        t.timeline.push({
+          status: newStatus,
+          time: 'Just now',
+          desc: `Status updated to ${newStatus} by ${newAgent}`
+        });
+
+        renderTimeline(t.timeline);
+        renderTicketsTable(tickets);
+        updateDashboardStats();
+        showToast(`Ticket updated to ${newStatus}`);
+      }
+    }
+
+    // FORM SUBMISSION HANDLER
+    function handleFormSubmit(e) {
+      e.preventDefault();
+      
+      const category = document.getElementById('formCategory').value;
+      const priority = document.getElementById('formPriority').value;
+      const title = document.getElementById('formTitle').value.trim();
+      const location = document.getElementById('formLocation').value.trim();
+      const desc = document.getElementById('formDescription').value.trim();
+
+      const newId = `CMP-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+
+      const newTicket = {
+        id: newId,
+        title: title,
+        category: category,
+        priority: priority,
+        status: 'Submitted',
+        assignedTo: 'Unassigned',
+        location: location,
+        description: desc,
+        createdAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
+        slaHours: priority === 'Urgent' ? 12 : priority === 'High' ? 24 : 48,
+        timeline: [
+          { status: 'Submitted', time: 'Just now', desc: 'Ticket registered by Citizen.' }
+        ],
+        comments: [],
+        rating: 0
+      };
+
+      tickets.unshift(newTicket);
+      renderTicketsTable(tickets);
+      updateDashboardStats();
+
+      closeModal('submitModal');
+      document.getElementById('complaintForm').reset();
+      document.getElementById('fileNamePreview').classList.add('hidden');
+
+      showToast(`Grievance filed! Ticket ${newId} created.`);
+    }
+
+    // FILTERS & SEARCH
+    function applyFilters() {
+      const cat = document.getElementById('filterCategory').value;
+      const pri = document.getElementById('filterPriority').value;
+      const sta = document.getElementById('filterStatus').value;
+
+      let filtered = tickets.filter(t => {
+        const matchCat = cat === 'ALL' || t.category === cat;
+        const matchPri = pri === 'ALL' || t.priority === pri;
+        const matchSta = sta === 'ALL' || t.status === sta;
+        return matchCat && matchPri && matchSta;
+      });
+
+      renderTicketsTable(filtered);
+    }
+
+    function filterTickets(status) {
+      document.getElementById('filterStatus').value = status;
+      applyFilters();
+    }
+
+    function handleGlobalSearch() {
+      const q = document.getElementById('globalSearchInput').value.toLowerCase().trim();
+      let filtered = tickets.filter(t => 
+        t.id.toLowerCase().includes(q) ||
+        t.title.toLowerCase().includes(q) ||
+        t.category.toLowerCase().includes(q) ||
+        t.location.toLowerCase().includes(q)
+      );
+      renderTicketsTable(filtered);
+    }
+
+    // VIEW SWITCHING (Registry vs Analytics)
+    function switchView(view) {
+      const vTickets = document.getElementById('viewTickets');
+      const vAnalytics = document.getElementById('viewAnalytics');
+      const btnTickets = document.getElementById('tabBtnTickets');
+      const btnAnalytics = document.getElementById('tabBtnAnalytics');
+
+      if (view === 'tickets') {
+        vTickets.classList.remove('hidden');
+        vAnalytics.classList.add('hidden');
+        btnTickets.className = "px-4 py-2 rounded-xl text-xs font-semibold transition bg-brand-600 text-white shadow-md flex items-center gap-2";
+        btnAnalytics.className = "px-4 py-2 rounded-xl text-xs font-semibold transition text-slate-400 hover:text-white hover:bg-slate-800 flex items-center gap-2";
+      } else {
+        vTickets.classList.add('hidden');
+        vAnalytics.classList.remove('hidden');
+        btnAnalytics.className = "px-4 py-2 rounded-xl text-xs font-semibold transition bg-brand-600 text-white shadow-md flex items-center gap-2";
+        btnTickets.className = "px-4 py-2 rounded-xl text-xs font-semibold transition text-slate-400 hover:text-white hover:bg-slate-800 flex items-center gap-2";
+      }
+    }
+
+    // CHART.JS INITIALIZATION
+    function initCharts() {
+      // 1. Category Chart
+      const ctxCat = document.getElementById('chartCategory').getContext('2d');
+      new Chart(ctxCat, {
+        type: 'doughnut',
+        data: {
+          labels: ['Infrastructure', 'Sanitation', 'Billing', 'Tech', 'Civic'],
+          datasets: [{
+            data: [35, 25, 20, 10, 10],
+            backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#64748b'],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 10 } } } }
+        }
+      });
+
+      // 2. Monthly Trends Chart
+      const ctxTrends = document.getElementById('chartTrends').getContext('2d');
+      new Chart(ctxTrends, {
+        type: 'line',
+        data: {
+          labels: ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'],
+          datasets: [{
+            label: 'Complaints',
+            data: [42, 58, 65, 50, 72, 89],
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            fill: true,
+            tension: 0.4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: '#64748b' }, grid: { display: false } },
+            y: { ticks: { color: '#64748b' }, grid: { color: '#1e293b' } }
+          }
+        }
+      });
+
+      // 3. Status Breakdown Chart
+      const ctxStatus = document.getElementById('chartStatus').getContext('2d');
+      new Chart(ctxStatus, {
+        type: 'bar',
+        data: {
+          labels: ['Submitted', 'In Review', 'In Progress', 'Resolved'],
+          datasets: [{
+            data: [15, 10, 25, 50],
+            backgroundColor: ['#64748b', '#a855f7', '#3b82f6', '#10b981'],
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: '#64748b' }, grid: { display: false } },
+            y: { ticks: { color: '#64748b' }, grid: { color: '#1e293b' } }
+          }
+        }
+      });
+    }
+
+    // NOTIFICATION DROPDOWN
+    function renderNotifications() {
+      const container = document.getElementById('notifContainer');
+      container.innerHTML = notifications.map(n => `
+        <div class="p-2 bg-slate-950/60 rounded-xl border border-slate-800/80">
+          <p class="text-slate-300">${n.text}</p>
+          <span class="text-[9px] text-slate-500 font-mono">${n.time}</span>
+        </div>
+      `).join('');
+    }
+
+    function toggleNotifications() {
+      document.getElementById('notifDropdown').classList.toggle('hidden');
+    }
+
+    function clearNotifications() {
+      notifications = [];
+      renderNotifications();
+      document.getElementById('notifBadge').innerText = '0';
+    }
+
+    // FILE ATTACHMENT SIMULATION
+    function simulateFileSelect(input) {
+      if (input.files && input.files[0]) {
+        const preview = document.getElementById('fileNamePreview');
+        preview.innerText = `Selected: ${input.files[0].name}`;
+        preview.classList.remove('hidden');
+      }
+    }
+
+    // MODAL HELPERS
+    function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+    // RATING TICKET
+    function rateTicket(stars) {
+      showToast(`Thank you! You rated resolution ${stars} stars.`);
+    }
+
+    // TOAST SYSTEM
+    function showToast(msg) {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = 'pointer-events-auto bg-slate-900 text-slate-100 border border-brand-500/40 text-xs px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 transform transition-all duration-300 translate-y-2';
+      toast.innerHTML = `<i class="fa-solid fa-circle-check text-brand-400"></i> <span>${msg}</span>`;
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-4');
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    // UTILITY SANITIZATION
+    function escapeHtml(str) {
+      return str.replace(/[&<>"']/g, function(m) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'
+        }[m];
